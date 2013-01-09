@@ -52,15 +52,15 @@ def build_dico():
                 dictionary[word]=[]
                 dictionary[word].append(2*i)
 
-if False and (os.path.exists(file_pickle) and
+if  (os.path.exists(file_pickle) and
     os.stat(file_pickle).st_mtime > os.stat(file).st_mtime):
     f = open(file_pickle, 'rb')
-    ditionaries = cPickle.load(f)
+    dictionaries = cPickle.load(f)
     f.close()
 else:
     build_dico()
     f = open(file_pickle, 'wb')
-    cPickle.dump((dictionaries[0],dictionaries[1]), f, cPickle.HIGHEST_PROTOCOL)
+    cPickle.dump(dictionaries, f, cPickle.HIGHEST_PROTOCOL)
     f.close()
 
 def find_examples(expression):
