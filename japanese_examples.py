@@ -16,6 +16,14 @@ import cPickle
 import random
 import re
 
+
+# Field names and lookup properties (case-sensitive)
+MAX = 20
+NOTE_TRIGGER = "example_sentences"
+SOURCE_FIELDS = ["Expression", "kanji-vocab"]
+DEST_FIELD = "Examples"
+
+
 # file containing the Tanaka corpus sentences
 file = os.path.join(mw.pm.addonFolder(), "japanese_examples.utf")
 file_pickle = os.path.join(mw.pm.addonFolder(), "japanese_examples.pickle")
@@ -24,7 +32,6 @@ content = f.readlines()
 f.close()
 
 dictionaries = ({},{})
-MAX = 20
 
 def build_dico():
     def splitter(txt):
@@ -63,13 +70,8 @@ else:
     cPickle.dump(dictionaries, f, cPickle.HIGHEST_PROTOCOL)
     f.close()
 
-def find_examples(expression):
-    info_question = ""
-    info_answer = ""
-    maxitems = MAX
-
-    examples_question = []
-    examples_answer = []
+def find_examples(expression, maxitems):
+    examples = []
 
     for dictionary in dictionaries:
         if expression in dictionary:
@@ -89,34 +91,42 @@ def find_examples(expression):
                     example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis)
                 else:
                     example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
-                examples_question.append("<br>%s<br><br>" % example.split('\t')[0])
-                examples_answer.append("<br>%s<br>%s<br>" % tuple(example.split('\t')))
+                examples.append("<br>%s<br>%s<br>" % tuple(example.split('\t')))
         else:
             match = re.search(u"(.*?)[／/]", expression)
             if match:
-                return find_examples(match.group(1))
+                res = find_examples(match.group(1), maxitems)
+                maxitems -= len(res)
+                examples.extend(res)
 
             match = re.search(u"(.*?)[(（](.+?)[)）]", expression)
             if match:
                 if match.group(1).strip():
-                    return find_examples("%s%s" % (match.group(1), match.group(2)))
+                    res = find_examples("%s%s" % (match.group(1), match.group(2)), maxitems)
+                    maxitems -= len(res)
+                    examples.extend(res)
 
-    info_question = "".join(examples_question)
-    info_answer = "".join(examples_answer)
-    return (info_question,info_answer)
+    return examples
 
 
 def add_examples(fields, model, data, n):
 
-    if "example_sentences" not in model['name'].lower():
+    if NOTE_TRIGGER not in model['name'].lower() or DEST_FIELD not in fields:
         return fields
 
-    if "Examples" not in fields or "Expression" not in fields:
+    lookup_fields = [fld for fld in SOURCE_FIELDS if fld in fields]
+
+    if not lookup_fields:
         return fields
 
-    info_question, info_answer = find_examples(fields["Expression"])
+    # Find example sentences
+    examples = []
+    for fld in lookup_fields:
+        maxitems = MAX - len(examples)
+        res = find_examples(fields[fld], maxitems)
+        examples.extend(res)
 
-    fields["Examples"] = info_answer
+    fields[DEST_FIELD] = "".join(examples)
     return fields
 
 
