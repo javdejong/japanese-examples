@@ -2,11 +2,9 @@
 #-*- coding: utf-8 -*-
 # File: japanese_examples.py
 # Description: Looks for example sentences in the Tanaka Corpus for the current card's expression.
-# This addon was first based on Andreas Klauer's "kanji_info" plugin, and is a modified version
-# of Guillaume VIRY's example sentences plugin for Anki 1.
 #
-# Author: Guillaume VIRY
-# License:     GPL
+# Authors: Andreas Klauer, Guaillaume Viry, Johan de Jong
+# License: GPLv2
 
 # --- initialize kanji database ---
 from aqt import mw
