@@ -26,6 +26,9 @@ SOURCE_FIELDS = ["Expression", "kanji-vocab"]
 DEST_FIELD = "Examples"
 WEIGHTED_SAMPLE = True # If True, weighted sampling is used that prefers shorter sentences
 
+# Automatically fill the Examples field when adding notes?
+LOOKUP_ON_ADD = True
+
 
 # file containing the Tanaka corpus sentences
 fname = os.path.join(mw.pm.addonFolder(), "japanese_examples.utf")
@@ -169,6 +172,30 @@ def find_examples(expression, maxitems):
     return examples
 
 
+def find_examples_multiple(n, maxitems, modelname=""):
+    if not modelname:
+        modelname = n.model()['name'].lower()
+
+    if NOTE_TRIGGER not in modelname or DEST_FIELD not in n:
+        return False
+
+    lookup_fields = [fld for fld in SOURCE_FIELDS if fld in n]
+
+    if not lookup_fields:
+        return False
+
+    # Find example sentences
+    examples = []
+    for fld in lookup_fields:
+        if not mw.col.media.strip(n[fld]).strip():
+            continue
+        maxitems = maxitems - len(examples)
+        res = find_examples(n[fld], maxitems)
+        examples.extend(res)
+
+    return "".join(examples)
+
+
 def setupBrowserMenu(browser):
     """ Add menu entry to browser window """
     a = QAction("Bulk-add Examples", browser)
@@ -185,47 +212,53 @@ def add_examples_bulk(nids):
     for nid in nids:
         note = mw.col.getNote(nid)
 
-        if NOTE_TRIGGER not in note.model()['name'].lower() or DEST_FIELD not in note:
-            continue
-
-        lookup_fields = [fld for fld in SOURCE_FIELDS if fld in note]
-
-        if not lookup_fields:
-            continue
-
         # Find example sentences
-        examples = []
-        for fld in lookup_fields:
-            # TODO: strip media with mw.col.media.strip() necessary or not?
-            maxitems = MAX_PERMANENT - len(examples)
-            res = find_examples(note[fld], maxitems)
-            examples.extend(res)
+        examples = find_examples_multiple(note, MAX_PERMANENT)
 
-        note[DEST_FIELD] = "".join(examples)
+        if not examples:
+            continue
+
+        note[DEST_FIELD] = examples
         note.flush()
     mw.progress.finish()
     mw.reset()
 
-def add_examples_temporarily(fields, model, data, n):
 
-    if NOTE_TRIGGER not in model['name'].lower() or DEST_FIELD not in fields:
+def add_examples_temporarily(fields, model, data, collection):
+    examples = find_examples_multiple(fields, MAX, modelname=model['name'].lower())
+
+    if not examples:
         return fields
 
-    lookup_fields = [fld for fld in SOURCE_FIELDS if fld in fields]
-
-    if not lookup_fields:
-        return fields
-
-    # Find example sentences
-    examples = []
-    for fld in lookup_fields:
-        maxitems = MAX - len(examples)
-        res = find_examples(fields[fld], maxitems)
-        examples.extend(res)
-
-    fields[DEST_FIELD] = "".join(examples)
+    fields[DEST_FIELD] = examples
     return fields
 
+
+def add_examples_focusLost(flag, n, fidx):
+    # get idx for all lookup fields
+    lookupIdx = []
+    for f in SOURCE_FIELDS:
+        for c, name in enumerate(mw.col.models.fieldNames(n.model())):
+            if name == f:
+                lookupIdx.append(c)
+
+    # return if destination field is already filled
+    if n[DEST_FIELD]:
+        return flag
+
+    # event coming from src field?
+    if fidx not in lookupIdx:
+        return flag
+
+    examples = find_examples_multiple(n, MAX_PERMANENT)
+
+    if not examples:
+        return flag
+
+    # update field
+    n[DEST_FIELD] = examples
+
+    return True
 
 from anki.hooks import addHook
 
@@ -233,4 +266,6 @@ addHook("mungeFields", add_examples_temporarily)
 
 # Bulk add
 addHook("browser.setupMenus", setupBrowserMenu)
+if LOOKUP_ON_ADD:
+    addHook('editFocusLost', add_examples_focusLost)
 
