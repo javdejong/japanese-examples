@@ -18,19 +18,32 @@ import re
 from operator import itemgetter
 
 
-# Field names and lookup properties (case-sensitive)
+# ************************************************
+#                User Options                    *
+# ************************************************
+
+# Amount of examples to show or add:
 MAX = 20          # Amount to temporarily show when this add-on is loaded
 MAX_PERMANENT = 5 # Amount to add permanently to the Examples field
+
+# Only try lookups if the note's model name contains:
 NOTE_TRIGGER = "example_sentences"
+
+# Source and destination fields (edit if the names if your fields are different)
 SOURCE_FIELDS = ["Expression", "kanji-vocab"]
 DEST_FIELD = "Examples"
-WEIGHTED_SAMPLE = True # If True, weighted sampling is used that prefers shorter sentences
+
+# Prefer shorter sentences by weighting?
+WEIGHTED_SAMPLE = True
 
 # Automatically fill the Examples field when adding notes?
 LOOKUP_ON_ADD = True
 
 
-# file containing the Tanaka corpus sentences
+# ************************************************
+#                Global Variables                *
+# ************************************************
+
 fname = os.path.join(mw.pm.addonFolder(), "japanese_examples.utf")
 file_pickle = os.path.join(mw.pm.addonFolder(), "japanese_examples.pickle")
 f = codecs.open(fname, 'r', 'utf8')
@@ -38,6 +51,11 @@ content = f.readlines()
 f.close()
 
 dictionaries = ({},{})
+
+
+# ************************************************
+#              Lookup functions                  *
+# ************************************************
 
 def build_dico():
     def splitter(txt):
@@ -72,20 +90,9 @@ def build_dico():
             dictionary[d] = sorted(dictionary[d], key=itemgetter(1))
 
 
-if  (os.path.exists(file_pickle) and
-    os.stat(file_pickle).st_mtime > os.stat(fname).st_mtime):
-    f = open(file_pickle, 'rb')
-    dictionaries = cPickle.load(f)
-    f.close()
-else:
-    build_dico()
-    f = open(file_pickle, 'wb')
-    cPickle.dump(dictionaries, f, cPickle.HIGHEST_PROTOCOL)
-    f.close()
-
-
 class Node:
     pass
+
 
 def weighted_sample(somelist, n):
     # TODO: See if http://stackoverflow.com/questions/2140787/select-random-k-elements-from-a-list-whose-elements-have-weights is faster for some practical use-cases.
@@ -196,6 +203,10 @@ def find_examples_multiple(n, maxitems, modelname=""):
     return "".join(examples)
 
 
+# ************************************************
+#                  Interface                     *
+# ************************************************
+
 def setupBrowserMenu(browser):
     """ Add menu entry to browser window """
     a = QAction("Bulk-add Examples", browser)
@@ -205,6 +216,11 @@ def setupBrowserMenu(browser):
 
 def onRegenerate(browser):
     add_examples_bulk(browser.selectedNotes())
+
+
+# ************************************************
+#              Hooked functions                  *
+# ************************************************
 
 def add_examples_bulk(nids):
     mw.checkpoint("Bulk-add Examples")
@@ -260,12 +276,31 @@ def add_examples_focusLost(flag, n, fidx):
 
     return True
 
+
+# ************************************************
+#                    Main                        *
+# ************************************************
+
+# Load or generate the dictionaries
+if  (os.path.exists(file_pickle) and
+    os.stat(file_pickle).st_mtime > os.stat(fname).st_mtime):
+    f = open(file_pickle, 'rb')
+    dictionaries = cPickle.load(f)
+    f.close()
+else:
+    build_dico()
+    f = open(file_pickle, 'wb')
+    cPickle.dump(dictionaries, f, cPickle.HIGHEST_PROTOCOL)
+    f.close()
+
+
+# Hooks:
 from anki.hooks import addHook
 
 addHook("mungeFields", add_examples_temporarily)
 
-# Bulk add
-addHook("browser.setupMenus", setupBrowserMenu)
 if LOOKUP_ON_ADD:
     addHook('editFocusLost', add_examples_focusLost)
+
+addHook("browser.setupMenus", setupBrowserMenu) # Bulk add
 
