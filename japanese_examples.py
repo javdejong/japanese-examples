@@ -258,10 +258,6 @@ def add_examples_focusLost(flag, n, fidx):
             if name == f:
                 lookupIdx.append(c)
 
-    # return if destination field is already filled
-    if n[DEST_FIELD]:
-        return flag
-
     # event coming from src field?
     if fidx not in lookupIdx:
         return flag
@@ -269,6 +265,10 @@ def add_examples_focusLost(flag, n, fidx):
     examples = find_examples_multiple(n, MAX_PERMANENT)
 
     if not examples:
+        return flag
+
+    # return if destination field is already filled
+    if n[DEST_FIELD]:
         return flag
 
     # update field
