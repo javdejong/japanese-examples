@@ -156,9 +156,14 @@ def find_examples(expression, maxitems):
                 color_example = content[j+1]
                 regexp = "(?:\(*%s\)*)(?:\([^\s]+?\))*(?:\[\d+\])*\{(.+?)\}" %expression
                 match = re.compile("%s" %regexp).search(color_example)
+                regexp_reading = "(?:\s([^\s]*?))(?:\(%s\))" % expression
+                match_reading = re.search(regexp_reading, color_example)
                 if match:
                     expression_bis = match.group(1)
                     example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis)
+                elif match_reading:
+                    expression_bis = match_reading.group(1)
+                    example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis) 
                 else:
                     example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
                 examples.append("<br>%s<br>%s<br>" % tuple(example.split('\t')))
