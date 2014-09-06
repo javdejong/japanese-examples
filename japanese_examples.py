@@ -167,7 +167,7 @@ def find_examples(expression, maxitems):
                     example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis) 
                 else:
                     example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
-                examples.append("<br>%s<br>%s<br>" % tuple(example.split('\t')))
+                examples.append("%s<br>%s" % tuple(example.split('\t')))
         else:
             match = re.search(u"(.*?)[／/]", expression)
             if match:
@@ -206,7 +206,7 @@ def find_examples_multiple(n, maxitems, modelname=""):
         res = find_examples(n[fld], maxitems)
         examples.extend(res)
 
-    return "".join(examples)
+    return "<br><br>".join(examples)
 
 
 # ************************************************
