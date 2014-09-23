@@ -26,10 +26,11 @@ from operator import itemgetter
 MAX = 20          # Amount to temporarily show when this add-on is loaded
 MAX_PERMANENT = 5 # Amount to add permanently to the Examples field
 
-# Only try lookups if the note's model name contains:
+# Only try lookups if the note's model name contains (case insensitive):
 NOTE_TRIGGER = "example_sentences"
 
 # Source and destination fields (edit if the names if your fields are different)
+# These field names are case sensitive
 SOURCE_FIELDS = ["Expression", "kanji-vocab"]
 DEST_FIELD = "Examples"
 
@@ -183,7 +184,7 @@ def find_examples_multiple(n, maxitems, modelname=""):
     if not modelname:
         modelname = n.model()['name'].lower()
 
-    if NOTE_TRIGGER not in modelname or DEST_FIELD not in n:
+    if NOTE_TRIGGER.lower() not in modelname or DEST_FIELD not in n:
         return False
 
     lookup_fields = [fld for fld in SOURCE_FIELDS if fld in n]
