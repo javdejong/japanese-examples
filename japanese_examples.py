@@ -16,11 +16,12 @@ import random
 import re
 from operator import itemgetter
 
-
 config = mw.addonManager.getConfig(__name__)
 
 SOURCE_FIELDS = config["srcFields"]
-DEST_FIELD = config["combinedDstField"]
+DST_FIELD_COMB = config["combinedDstField"]
+DST_FIELD_JAP = config["japaneseDstField"]
+DST_FIELD_ENG = config["englishDstField"]
 
 
 # ************************************************
@@ -150,7 +151,7 @@ def find_examples(expression, maxitems):
                     example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis)
                 else:
                     example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
-                examples.append("%s<br>%s" % tuple(example.split('\t')))
+                examples.append(tuple(example.split('\t')))
         else:
             match = re.search(u"(.*?)[／/]", expression)
             if match:
@@ -168,17 +169,24 @@ def find_examples(expression, maxitems):
     return examples
 
 
+
+class NoExamplesFoundException(Exception):
+    pass
+
+
 def find_examples_multiple(n, maxitems, modelname=""):
     if not modelname:
         modelname = n.model()['name'].lower()
 
-    if not any(nt.lower() in modelname for nt in config["noteTypes"]) or DEST_FIELD not in n:
-        return False
+    if (not any(nt.lower() in modelname for nt in config["noteTypes"])
+            or (DST_FIELD_COMB not in n and DST_FIELD_ENG not in n and DST_FIELD_JAP not in n)):
+        raise NoExamplesFoundException()
+
 
     lookup_fields = [fld for fld in SOURCE_FIELDS if fld in n]
 
     if not lookup_fields:
-        return False
+        raise NoExamplesFoundException()
 
     # Find example sentences
     examples = []
@@ -189,7 +197,14 @@ def find_examples_multiple(n, maxitems, modelname=""):
         res = find_examples(n[fld], maxitems)
         examples.extend(res)
 
-    return "<br><br>".join(examples)
+    combined_examples = ["%s<br>%s" % x for x in examples]
+    japanese_examples, english_examples = zip(*examples)
+
+    combined_examples = "<br><br>".join(combined_examples)
+    japanese_examples = "<br><br>".join(japanese_examples)
+    english_examples = "<br><br>".join(english_examples)
+
+    return combined_examples, japanese_examples, english_examples
 
 
 # ************************************************
@@ -212,6 +227,17 @@ def onRegenerate(browser):
 #              Hooked functions                  *
 # ************************************************
 
+
+def _set_fields(note, examples):
+    keys = [DST_FIELD_COMB, DST_FIELD_JAP, DST_FIELD_ENG]
+
+    for k, v in zip(keys, examples):
+        try:
+            note[k] = v
+        except KeyError:
+            pass
+
+
 def add_examples_bulk(nids):
     mw.checkpoint("Bulk-add Examples")
     mw.progress.start()
@@ -219,24 +245,26 @@ def add_examples_bulk(nids):
         note = mw.col.getNote(nid)
 
         # Find example sentences
-        examples = find_examples_multiple(note, config["maxPermanent"])
-
-        if not examples:
+        try:
+            examples = find_examples_multiple(note, config["maxPermanent"])
+        except NoExamplesFoundException:
             continue
 
-        note[DEST_FIELD] = examples
+        _set_fields(note, examples)
+
         note.flush()
     mw.progress.finish()
     mw.reset()
 
 
 def add_examples_temporarily(fields, model, data, collection):
-    examples = find_examples_multiple(fields, config["maxShow"], modelname=model['name'].lower())
-
-    if not examples:
+    try:
+        examples = find_examples_multiple(fields, config["maxShow"], modelname=model['name'].lower())
+    except NoExamplesFoundException:
         return fields
 
-    fields[DEST_FIELD] = examples
+    _set_fields(fields, examples)
+
     return fields
 
 
@@ -253,18 +281,18 @@ def add_examples_focusLost(flag, n, fidx):
     if fidx not in lookupIdx:
         return flag
 
-
-    examples = find_examples_multiple(n, config["maxPermanent"])
-
-    if not examples:
+    try:
+        examples = find_examples_multiple(n, config["maxPermanent"])
+    except NoExamplesFoundException:
         return flag
 
-    # return if destination field is already filled
-    if n[DEST_FIELD]:
+    # return if any of the destination fields is already filled
+    if ((DST_FIELD_ENG in n and n[DST_FIELD_ENG])
+        or (DST_FIELD_JAP in n and n[DST_FIELD_JAP])
+        or (DST_FIELD_COMB in n and n[DST_FIELD_COMB])):
         return flag
 
-    # update field
-    n[DEST_FIELD] = examples
+    _set_fields(n, examples)
 
     return True
 

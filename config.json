@@ -5,5 +5,7 @@
 	"srcFields": ["Expression", "kanji-vocab"],
 	"combinedDstField": "Examples",
 	"weightedSample": true,
-	"lookupOnAdd": true
+	"lookupOnAdd": true,
+	"japaneseDstField": "ExampleJapanese",
+	"englishDstField": "ExampleEnglish"
 }
