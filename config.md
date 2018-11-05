@@ -6,7 +6,11 @@
 
 *srcFields*: Fields to look up examples for (case-sensitive).
 
-*combinedDstField*: Field to put the example sentences
+*combinedDstField*: Field to put the example sentences (sets of Japanese + English). Ignored if field does not exist.
+
+*japaneseDstField*: Field to put the Japanese part of the example sentences. Ignored if field does not exist.
+
+*englishDstField*: Field to put the English part of the example sentences. Ignored if field does not exist.
 
 *weightedSample*: Whether to prefer shorter example sentences.
 
