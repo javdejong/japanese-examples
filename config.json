@@ -1,0 +1,9 @@
+{
+	"maxShow": 20,
+	"maxPermanent": 5,
+	"noteTypes": ["example_sentences"],
+	"srcFields": ["Expression", "kanji-vocab"],
+	"combinedDstField": "Examples",
+	"weightedSample": true,
+	"lookupOnAdd": true
+}

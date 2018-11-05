@@ -11,43 +11,26 @@ from aqt import mw
 from aqt.qt import *
 
 import os
-import codecs
-import cPickle
+import pickle
 import random
 import re
 from operator import itemgetter
 
 
-# ************************************************
-#                User Options                    *
-# ************************************************
+config = mw.addonManager.getConfig(__name__)
 
-# Amount of examples to show or add:
-MAX = 20          # Amount to temporarily show when this add-on is loaded
-MAX_PERMANENT = 5 # Amount to add permanently to the Examples field
-
-# Only try lookups if the note's model name contains (case insensitive):
-NOTE_TRIGGER = "example_sentences"
-
-# Source and destination fields (edit if the names if your fields are different)
-# These field names are case sensitive
-SOURCE_FIELDS = ["Expression", "kanji-vocab"]
-DEST_FIELD = "Examples"
-
-# Prefer shorter sentences by weighting?
-WEIGHTED_SAMPLE = True
-
-# Automatically fill the Examples field when adding notes?
-LOOKUP_ON_ADD = True
+SOURCE_FIELDS = config["srcFields"]
+DEST_FIELD = config["combinedDstField"]
 
 
 # ************************************************
 #                Global Variables                *
 # ************************************************
 
-fname = os.path.join(mw.pm.addonFolder(), "japanese_examples.utf")
-file_pickle = os.path.join(mw.pm.addonFolder(), "japanese_examples.pickle")
-f = codecs.open(fname, 'r', 'utf8')
+dir_path = os.path.dirname(os.path.realpath(__file__))
+fname = os.path.join(dir_path, "japanese_examples.utf")
+file_pickle = os.path.join(dir_path, "japanese_examples.pickle")
+f = open(fname, 'r', encoding='utf8')
 content = f.readlines()
 f.close()
 
@@ -60,7 +43,7 @@ dictionaries = ({},{})
 
 def build_dico():
     def splitter(txt):
-        txt = re.compile('\s|\[|\]|\(|\{|\)|\}').split(txt)
+        txt = re.compile(r'\s|\[|\]|\(|\{|\)|\}').split(txt)
         for i in range(0,len(txt)):
             if txt[i] == "~":
                 txt[i-2] = txt[i-2] + "~"
@@ -142,7 +125,7 @@ def find_examples(expression, maxitems):
     for dictionary in dictionaries:
         if expression in dictionary:
             index = dictionary[expression]
-            if WEIGHTED_SAMPLE:
+            if config["weightedSample"]:
                 index = weighted_sample(index, min(len(index),maxitems))
             else:
                 index = random.sample(index, min(len(index),maxitems))
@@ -155,16 +138,16 @@ def find_examples(expression, maxitems):
                     example = example + " {CHECKED}"
                 example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
                 color_example = content[j+1]
-                regexp = "(?:\(*%s\)*)(?:\([^\s]+?\))*(?:\[\d+\])*\{(.+?)\}" %expression
+                regexp = r"(?:\(*%s\)*)(?:\([^\s]+?\))*(?:\[\d+\])*\{(.+?)\}" %expression
                 match = re.compile("%s" %regexp).search(color_example)
-                regexp_reading = "(?:\s([^\s]*?))(?:\(%s\))" % expression
+                regexp_reading = r"(?:\s([^\s]*?))(?:\(%s\))" % expression
                 match_reading = re.search(regexp_reading, color_example)
                 if match:
                     expression_bis = match.group(1)
                     example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis)
                 elif match_reading:
                     expression_bis = match_reading.group(1)
-                    example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis) 
+                    example = example.replace(expression_bis,'<FONT COLOR="#ff0000">%s</FONT>' %expression_bis)
                 else:
                     example = example.replace(expression,'<FONT COLOR="#ff0000">%s</FONT>' %expression)
                 examples.append("%s<br>%s" % tuple(example.split('\t')))
@@ -189,7 +172,7 @@ def find_examples_multiple(n, maxitems, modelname=""):
     if not modelname:
         modelname = n.model()['name'].lower()
 
-    if NOTE_TRIGGER.lower() not in modelname or DEST_FIELD not in n:
+    if not any(nt.lower() in modelname for nt in config["noteTypes"]) or DEST_FIELD not in n:
         return False
 
     lookup_fields = [fld for fld in SOURCE_FIELDS if fld in n]
@@ -216,9 +199,10 @@ def find_examples_multiple(n, maxitems, modelname=""):
 def setupBrowserMenu(browser):
     """ Add menu entry to browser window """
     a = QAction("Bulk-add Examples", browser)
-    browser.connect(a, SIGNAL("triggered()"), lambda e=browser: onRegenerate(e))
+    a.triggered.connect(lambda: onRegenerate(browser))
     browser.form.menuEdit.addSeparator()
     browser.form.menuEdit.addAction(a)
+
 
 def onRegenerate(browser):
     add_examples_bulk(browser.selectedNotes())
@@ -235,7 +219,7 @@ def add_examples_bulk(nids):
         note = mw.col.getNote(nid)
 
         # Find example sentences
-        examples = find_examples_multiple(note, MAX_PERMANENT)
+        examples = find_examples_multiple(note, config["maxPermanent"])
 
         if not examples:
             continue
@@ -247,7 +231,7 @@ def add_examples_bulk(nids):
 
 
 def add_examples_temporarily(fields, model, data, collection):
-    examples = find_examples_multiple(fields, MAX, modelname=model['name'].lower())
+    examples = find_examples_multiple(fields, config["maxShow"], modelname=model['name'].lower())
 
     if not examples:
         return fields
@@ -264,11 +248,13 @@ def add_examples_focusLost(flag, n, fidx):
             if name == f:
                 lookupIdx.append(c)
 
+
     # event coming from src field?
     if fidx not in lookupIdx:
         return flag
 
-    examples = find_examples_multiple(n, MAX_PERMANENT)
+
+    examples = find_examples_multiple(n, config["maxPermanent"])
 
     if not examples:
         return flag
@@ -291,12 +277,12 @@ def add_examples_focusLost(flag, n, fidx):
 if  (os.path.exists(file_pickle) and
     os.stat(file_pickle).st_mtime > os.stat(fname).st_mtime):
     f = open(file_pickle, 'rb')
-    dictionaries = cPickle.load(f)
+    dictionaries = pickle.load(f)
     f.close()
 else:
     build_dico()
     f = open(file_pickle, 'wb')
-    cPickle.dump(dictionaries, f, cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(dictionaries, f, pickle.HIGHEST_PROTOCOL)
     f.close()
 
 
@@ -305,8 +291,7 @@ from anki.hooks import addHook
 
 addHook("mungeFields", add_examples_temporarily)
 
-if LOOKUP_ON_ADD:
+if config["lookupOnAdd"]:
     addHook('editFocusLost', add_examples_focusLost)
 
 addHook("browser.setupMenus", setupBrowserMenu) # Bulk add
-
