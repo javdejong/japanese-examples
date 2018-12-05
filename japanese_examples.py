@@ -198,7 +198,11 @@ def find_examples_multiple(n, maxitems, modelname=""):
         examples.extend(res)
 
     combined_examples = ["%s<br>%s" % x for x in examples]
-    japanese_examples, english_examples = zip(*examples)
+
+    if examples:
+        japanese_examples, english_examples = zip(*examples)
+    else:
+        japanese_examples, english_examples = [], []
 
     combined_examples = "<br><br>".join(combined_examples)
     japanese_examples = "<br><br>".join(japanese_examples)
