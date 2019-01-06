@@ -262,6 +262,9 @@ def add_examples_bulk(nids):
 
 
 def add_examples_temporarily(fields, model, data, collection):
+    if config["maxShow"] == 0:
+        return fields
+
     try:
         examples = find_examples_multiple(fields, config["maxShow"], modelname=model['name'].lower())
     except NoExamplesFoundException:
