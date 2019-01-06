@@ -175,6 +175,9 @@ class NoExamplesFoundException(Exception):
 
 
 def find_examples_multiple(n, maxitems, modelname=""):
+    if maxitems == 0:
+        raise NoExamplesFoundException()
+
     if not modelname:
         modelname = n.model()['name'].lower()
 

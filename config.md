@@ -1,4 +1,4 @@
-*maxShow*: Amount of examples to temporarily show when this add-on is loaded
+*maxShow*: Amount of examples to temporarily show when this add-on is loaded. If set to 0, then examples won't be loaded automatically (only the values already in the fields will be used).
 
 *maxPermanent* Amount to add permanently to the Examples field
 
